@@ -4,8 +4,7 @@
 # Summary of changes.
 # Reduced Male and Female names into one list for ease of expansion
 # Changed Displayname code to create each combination of names possible
-# Changed sAMAccountname generation to add unique account ID with orgShortName as suffix.
-
+# Changed sAMAccountname generation to be firstname + lastname
 
 # Known issues
 # Usercount (For me anyway) seems to be inaccurate when import completes. May be related to errorcheck compensation when usercount is reduced. Consistently seem to get many more users that intended.
@@ -22,11 +21,11 @@ Push-Location (Split-Path ($MyInvocation.MyCommand.Path))
 # Global variables
 #
 # User properties
-$ou = "OU=YourOUHere,DC=AC,DC=Local"         # Which OU to create the user in
+$ou = "OU=TEST,DC=THEGIBSON,DC=LAN"          # Which OU to create the user in
 $initialPassword = "Password1"               # Initial password set for the user
-$orgShortName = "AC"                         # This is used to build a user's sAMAccountName
-$dnsDomain = "AC.local"                      # Domain is used for e-mail address and UPN
-$company = "AC co"                           # Used for the user object's company attribute
+$orgShortName = "THEGIBSON"                  # This is used to build a user's sAMAccountName
+$dnsDomain = "THEGIBSON.LAN                  # Domain is used for e-mail address and UPN
+$company = "THEGIBSON co"                    # Used for the user object's company attribute
 $departments = (                             # Departments and associated job titles to assign to the users
                   @{"Name" = "Finance & Accounting"; Positions = ("Manager", "Accountant", "Data Entry")},
                   @{"Name" = "Human Resources"; Positions = ("Manager", "Administrator", "Officer", "Coordinator")},
@@ -44,6 +43,7 @@ $phoneCountryCodes = @{"GB" = "+44"}         # Country codes for the countries u
 # Other parameters
 $userCount = 5000                           # How many users to create
 $locationCount = 1                          # How many different offices locations to use
+$employeeNumber = 1
 
 # Files used
 $firstNameFile = "Firstnames.txt"            # Format: FirstName
@@ -106,15 +106,10 @@ for ($i = 0; $i -le $locationCount; $i++)
 #
    
 # Sex & name
-$i = 0
-if ($i -lt $userCount) 
+for ($i = 0; $i -lt $userCount; $i++)
 {
-    foreach ($firstname in $firstNames)
-{
-    foreach ($lastname in $lastnames)
-    {
-    $Fname = $firstname.Firstname
-    $Lname = $lastName.Lastname
+    $Fname = $firstNames[$(Get-Random -Minimum 0 -Maximum $firstNames.Count)].Firstname
+    $Lname = $lastNames[$(Get-Random -Minimum 0 -Maximum $lastNames.Count)].Lastname
 
     $displayName = $Fname + " " + $Lname
 
@@ -145,7 +140,7 @@ if ($i -lt $userCount)
    $officePhone = $phoneCountryCodes[$country] + "-" + $postalAreaCodes[$postalCode].Substring(1) + "-" + (Get-Random -Minimum 100000 -Maximum 1000000)
    
    # Build the sAMAccountName: $orgShortName + employee number
-   $sAMAccountName = $orgShortName + $employeeNumber
+   $sAMAccountName = $Fname + $Lname
    $userExists = $false
    Try   { $userExists = Get-ADUser -LDAPFilter "(sAMAccountName=$sAMAccountName)" }
    Catch { }
@@ -171,6 +166,4 @@ if ($i -lt $userCount)
        "Script Complete. Exiting"
        exit
    }
-}
-}
 }
