@@ -1,14 +1,5 @@
 #Credit for original script to Helge Klein https://helgeklein.com.
-#Adapted to allow higher numbers of users with the same information set.
-
-# Summary of changes.
-# Reduced Male and Female names into one list for ease of expansion
-# Changed Displayname code to create each combination of names possible
-# Changed sAMAccountname generation to be firstname + lastname
-
-# Known issues
-# Usercount (For me anyway) seems to be inaccurate when import completes. May be related to errorcheck compensation when usercount is reduced. Consistently seem to get many more users that intended.
-
+#Adapted to allow higher numbers of users with the same information set
 
 Set-StrictMode -Version 2
 
@@ -21,11 +12,12 @@ Push-Location (Split-Path ($MyInvocation.MyCommand.Path))
 # Global variables
 #
 # User properties
-$ou = "OU=TEST,DC=THEGIBSON,DC=LAN"          # Which OU to create the user in
+$ou = "OU=TEST,DC=THEGIBSON,DC=LAN"         # Which OU to create the user in
+$groupou = "OU=TESTGROUP,DC=THEGIBSON,DC=LAN"
 $initialPassword = "Password1"               # Initial password set for the user
-$orgShortName = "THEGIBSON"                  # This is used to build a user's sAMAccountName
-$dnsDomain = "THEGIBSON.LAN                  # Domain is used for e-mail address and UPN
-$company = "THEGIBSON co"                    # Used for the user object's company attribute
+$orgShortName = "THEGIBSON"                         # This is used to build a user's sAMAccountName
+$dnsDomain = "THEGIBSON.LAN"                      # Domain is used for e-mail address and UPN
+$company = "THEGIBSON co"                           # Used for the user object's company attribute
 $departments = (                             # Departments and associated job titles to assign to the users
                   @{"Name" = "Finance & Accounting"; Positions = ("Manager", "Accountant", "Data Entry")},
                   @{"Name" = "Human Resources"; Positions = ("Manager", "Administrator", "Officer", "Coordinator")},
@@ -96,7 +88,9 @@ for ($i = 0; $i -le $locationCount; $i++)
    $addressIndexesUsed += $addressIndex
 }
 
-
+# Create Groups
+1..100 | % { New-ADGroup -Name "Group$_" -SamAccountName "Group$_" -GroupCategory Security -GroupScope Global -Path $groupou}
+$grouplist = Get-ADGroup -Filter * -SearchBase $groupou
 #
 # Create the users
 #
@@ -160,6 +154,14 @@ for ($i = 0; $i -lt $userCount; $i++)
    "Created user #" + ($i+1) + ", $displayName, $sAMAccountName, $title, $department, $street, $city"
    $i = $i+1
    $employeeNumber = $employeeNumber+1
+
+   $groupcount = Get-Random -Minimum 5 -Maximum 100
+   $groupsToAdd = Get-Random -InputObject $grouplist -Count $groupcount
+   foreach ($gr in $groupsToAdd)
+   {
+       "Adding $sAMAccountName to the following group: $gr"
+       Add-ADGroupMember -Identity $gr $sAMAccountName
+   }
 
       if ($i -ge $userCount) 
    {
